@@ -541,6 +541,28 @@ const CALCULATOR_REGISTRY = {
             };
         }
     },
+        "roi-calculator": {
+        title: "ROI Calculator",
+        category: "Finance",
+        description: "Calculate your Return on Investment percentage to see how profitable your investment was.",
+        mainLabel: "ROI",
+        inputs: [
+            { id: "invested", label: "Amount Invested", type: "number", prefix: "$", value: 1000 },
+            { id: "returned", label: "Amount Returned", type: "number", prefix: "$", value: 1500 }
+        ],
+        logic: (vals) => {
+            const profit = vals.returned - vals.invested;
+            const roi = (profit / vals.invested) * 100;
+            
+            return {
+                main: roi.toFixed(2) + "%",
+                secondary: [
+                    { label: "Net Profit", value: "$" + profit.toLocaleString() },
+                    { label: "Total Return", value: "$" + vals.returned.toLocaleString() }
+                ]
+            };
+        }
+    },
     "bmi-calculator": {
         title: "BMI Calculator",
         category: "Health",
