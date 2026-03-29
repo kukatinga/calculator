@@ -601,17 +601,31 @@ const els = {
     about: document.getElementById('aboutText')
 };
 
+// 1. Initialize Router (Clean URL Version)
 function init() {
-    // Simple URL Parameter Logic for Phase 1
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug');
+    // Get the path (e.g., "/bmi-calculator")
+    const path = window.location.pathname;
     
-    if (slug && CALCULATOR_REGISTRY[slug]) {
-        loadCalculator(slug);
-    } else if (slug && !CALCULATOR_REGISTRY[slug]) {
-        loadPlaceholder(slug);
+    let slug = '';
+
+    // If the path is just "/", load the default calculator
+    if (path === '/' || path === '/index.html') {
+        slug = 'mortgage-calculator'; 
     } else {
-        loadCalculator('mortgage-calculator'); 
+        // Remove the first slash "/" and the last slash "/" if it exists
+        slug = path.replace(/^\/|\/$/g, '');
+    }
+
+    // Optional: Add "-calculator" if the user just typed "bmi"
+    if (!slug.endsWith('-calculator')) {
+        slug = slug + '-calculator';
+    }
+
+    // Load the calculator
+    if (CALCULATOR_REGISTRY[slug]) {
+        loadCalculator(slug);
+    } else {
+        loadPlaceholder(slug);
     }
 }
 
