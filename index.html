@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/parrot.png" type="image/png" sizes="64x64">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcumina — Universal Calculator</title>
+    <meta name="description" content="Free online calculators for Finance, Health, Math, and Payroll.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --ink: #0d0f12;
+            --ink-soft: #3a3d45;
+            --ink-muted: #8b8f9a;
+            --bg: #f7f6f2;
+            --bg-card: #ffffff;
+            --accent: #1a47e8;
+            --accent-light: #eef1fd;
+            --green: #00b87c;
+            --red: #e84444;
+            --red-light: #fdeaea;
+            --border: #e4e2db;
+            --shadow-sm: 0 1px 3px rgba(13,15,18,0.06), 0 4px 12px rgba(13,15,18,0.04);
+            --shadow-md: 0 4px 16px rgba(13,15,18,0.08), 0 12px 32px rgba(13,15,18,0.06);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(247,246,242,0.94);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 58px;
+        }
+        .nav-logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: var(--ink);
+            text-decoration: none;
+            letter-spacing: -0.03em;
+        }
+        .nav-logo span { color: var(--accent); }
+        
+        .nav-search {
+            position: relative;
+            width: 300px;
+        }
+        .nav-search input {
+            width: 100%;
+            padding: 8px 12px 8px 36px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: white;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .nav-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,71,232,0.1); }
+        .nav-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--ink-muted);
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-top: 8px;
+            box-shadow: var(--shadow-md);
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 101;
+        }
+        .search-dropdown.active { display: block; }
+        .search-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: var(--ink-soft);
+        }
+        .search-item:last-child { border-bottom: none; }
+        .search-item:hover { background: var(--bg); color: var(--accent); }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 24px 80px;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 32px;
+            align-items: start;
+            flex: 1;
+        }
+
+        .main-col { width: 100%; }
+
+        .page-header { margin-bottom: 24px; }
+        .page-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-light);
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .page-header h1 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            letter-spacing: -0.04em;
+            line-height: 1.1;
+            color: var(--ink);
+            margin-bottom: 10px;
+        }
+        .page-header p {
+            font-size: 1rem;
+            color: var(--ink-soft);
+            font-weight: 300;
+            max-width: 560px;
+            line-height: 1.6;
+        }
+
+        .calc-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+            min-height: 200px;
+        }
+        .calc-card-header {
+            padding: 20px 24px 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+        .calc-card-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--ink);
+        }
+        .calc-body { padding: 24px; }
+
+        /* Dynamic Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--ink-soft);
+            letter-spacing: 0.02em;
+        }
+        .input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-prefix, .input-suffix {
+            position: absolute;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--ink-muted);
+            pointer-events: none;
+        }
+        .input-prefix { left: 12px; }
+        .input-suffix { right: 12px; }
+
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            color: var(--ink);
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            padding: 10px 12px;
+        }
+        input[type="number"] { padding-left: 28px; }
+        input.no-prefix { padding-left: 12px; }
+        
+        input:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(26,71,232,0.1);
+            background: white;
+        }
+
+        .range-group { gap: 4px; }
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border);
+            border-radius: 4px;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            width: 100%;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(26,71,232,0.3);
+        }
+
+        .calc-btn {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            letter-spacing: -0.01em;
+        }
+        .calc-btn:hover { background: #0f36cc; }
+        .calc-btn:active { transform: scale(0.99); }
+
+        .results {
+            margin-top: 20px;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .results.visible { display: block; }
+
+        .result-primary {
+            background: var(--accent);
+            border-radius: 12px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .result-primary-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.75);
+        }
+        .result-primary-value {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: white;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .result-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .result-item-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .result-item-value {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--ink);
+            letter-spacing: -0.03em;
+        }
+
+        .sidebar { position: sticky; top: 76px; }
+
+        .guide-cta {
+            background: var(--ink);
+            border-radius: 16px;
+            padding: 24px;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 20px;
+        }
+        .guide-cta-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #f5c842;
+            margin-bottom: 8px;
+        }
+        .guide-cta-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: white;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: 8px;
+        }
+        .guide-cta-desc {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        .guide-cta-btn {
+            display: block;
+            background: #f5c842;
+            color: var(--ink);
+            text-align: center;
+            padding: 11px;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: background 0.15s;
+        }
+        .guide-cta:hover .guide-cta-btn { background: #e8b800; }
+
+        .content-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+        .content-section h2 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .error-msg {
+            background: var(--red-light);
+            color: var(--red);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        footer {
+            background: var(--ink);
+            padding: 40px 24px;
+            margin-top: auto;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+        }
+        .footer-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
+        .footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; color: white; font-size: 1.2rem; margin-bottom: 10px; display: block; text-decoration: none;}
+        .footer-logo span { color: var(--accent); }
+
+        @media (max-width: 860px) {
+            .page { grid-template-columns: 1fr; padding: 20px 16px 60px; }
+            .sidebar { position: static; }
+            .form-grid { grid-template-columns: 1fr; }
+            .nav-search { display: none; } 
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="?" class="nav-logo">Calcu<span>mina</span></a>
+        <div class="nav-search">
+            <span class="nav-search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Find a calculator (e.g. Mortgage, BMI)...">
+            <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+    </div>
+</nav>
+
+<div class="page">
+    <div class="main-col">
+        <div class="page-header">
+            <div class="page-tag" id="categoryTag">Finance</div>
+            <h1 id="pageTitle">Mortgage Calculator</h1>
+            <p id="pageDesc">Estimate your monthly mortgage payment, total interest paid, and full loan cost breakdown.</p>
+        </div>
+
+        <div class="calc-card">
+            <div class="calc-card-header">
+                <h2 id="formTitle">Enter Your Details</h2>
+            </div>
+            <div class="calc-body">
+                <div id="dynamicInputs"></div>
+                
+                <button class="calc-btn" id="calculateBtn">Calculate →</button>
+
+                <div class="results" id="resultsArea">
+                    <div class="result-primary">
+                        <div>
+                            <div class="result-primary-label" id="mainResultLabel">Result</div>
+                            <div class="result-primary-value" id="mainResultValue">—</div>
+                        </div>
+                    </div>
+                    <div class="result-grid" id="secondaryResults"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2>About This Calculator</h2>
+            <p id="aboutText">Detailed information about how this calculation works will appear here.</p>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <a href="#" class="guide-cta" id="guideLink">
+            <div class="guide-cta-label">💡 Free Guide</div>
+            <div class="guide-cta-title">Master Your Finances</div>
+            <div class="guide-cta-desc">Learn the strategies that experts use to save money and build wealth.</div>
+            <div class="guide-cta-btn">Get the Guide →</div>
+        </a>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <a href="?" class="footer-logo">Calcu<span>mina</span></a>
+        <p>© 2026 Calcumina. All results are estimates.</p>
+    </div>
+</footer>
+
+<script>
+const CALCULATOR_REGISTRY = {
+    "mortgage-calculator": {
+        title: "Mortgage Calculator",
+        category: "Finance",
+        description: "Estimate your monthly mortgage payment, total interest paid, and full loan cost breakdown — instantly and for free.",
+        mainLabel: "Monthly Payment",
+        inputs: [
+            { id: "homePrice", label: "Home Price", type: "number", prefix: "$", value: 350000 },
+            { id: "downPayment", label: "Down Payment", type: "number", prefix: "$", value: 70000 },
+            { id: "interestRate", label: "Interest Rate", type: "range", min: 2, max: 15, step: 0.1, value: 6.8, suffix: "%" },
+            { id: "loanTerm", label: "Loan Term", type: "select", options: [
+                {val: 30, txt: "30 Years"}, {val: 20, txt: "20 Years"}, {val: 15, txt: "15 Years"}
+            ]},
+            { id: "tax", label: "Property Tax (Yearly)", type: "number", prefix: "$", value: 3500 },
+            { id: "insurance", label: "Insurance (Yearly)", type: "number", prefix: "$", value: 1200 }
+        ],
+        logic: (vals) => {
+            const P = vals.homePrice - vals.downPayment;
+            const r = (vals.interestRate / 100) / 12;
+            const n = vals.loanTerm * 12;
+            
+            let monthlyPI = 0;
+            if (r === 0) monthlyPI = P / n;
+            else monthlyPI = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+
+            const monthlyTaxIns = (vals.tax + vals.insurance) / 12;
+            const totalMonthly = monthlyPI + monthlyTaxIns;
+            const totalCost = (monthlyPI * n) + (vals.tax * vals.loanTerm) + (vals.insurance * vals.loanTerm);
+            const totalInterest = (monthlyPI * n) - P;
+
+            return {
+                main: "$" + totalMonthly.toLocaleString(undefined, {maximumFractionDigits: 0}),
+                secondary: [
+                    { label: "Loan Amount", value: "$" + P.toLocaleString() },
+                    { label: "Total Interest", value: "$" + totalInterest.toLocaleString() },
+                    { label: "Total Cost", value: "$" + totalCost.toLocaleString() },
+                    { label: "Payoff Date", value: new Date(Date.now() + n * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {month:'short', year:'numeric'}) }
+                ]
+            };
+        }
+    },
+    "bmi-calculator": {
+        title: "BMI Calculator",
+        category: "Health",
+        description: "Calculate your Body Mass Index (BMI) to determine if you are in a healthy weight range.",
+        mainLabel: "Your BMI",
+        inputs: [
+            { id: "gender", label: "Gender", type: "select", options: [{val:"male", txt:"Male"}, {val:"female", txt:"Female"}] },
+            { id: "age", label: "Age", type: "number", value: 30, suffix: "years" },
+            { id: "height", label: "Height", type: "number", value: 175, suffix: "cm" },
+            { id: "weight", label: "Weight", type: "number", value: 70, suffix: "kg" }
+        ],
+        logic: (vals) => {
+            const hM = vals.height / 100;
+            const bmi = vals.weight / (hM * hM);
+            let status = "";
+            let color = "var(--ink)";
+            
+            if (bmi < 18.5) { status = "Underweight"; color = "var(--accent)"; }
+            else if (bmi < 25) { status = "Healthy Weight"; color = "var(--green)"; }
+            else if (bmi < 30) { status = "Overweight"; color = "#e69500"; }
+            else { status = "Obese"; color = "var(--red)"; }
+
+            return {
+                main: bmi.toFixed(1),
+                mainColor: color,
+                mainSub: status,
+                secondary: [
+                    { label: "Healthy Range (18.5-24.9)", value: (18.5 * hM * hM).toFixed(0) + " - " + (24.9 * hM * hM).toFixed(0) + " kg" },
+                    { label: "Prime Weight", value: (21.7 * hM * hM).toFixed(1) + " kg" }
+                ]
+            };
+        }
+    }
+};
+
+const RAW_KEYWORD_LIST = [
+    "mortgage calculator", "bmi calculator", "loan calculator", "age calculator", "roi calculator"
+];
+
+const state = {
+    currentSlug: 'mortgage-calculator',
+    inputValues: {}
+};
+
+const els = {
+    title: document.getElementById('pageTitle'),
+    tag: document.getElementById('categoryTag'),
+    desc: document.getElementById('pageDesc'),
+    formTitle: document.getElementById('formTitle'),
+    inputContainer: document.getElementById('dynamicInputs'),
+    calcBtn: document.getElementById('calculateBtn'),
+    results: document.getElementById('resultsArea'),
+    mainResultVal: document.getElementById('mainResultValue'),
+    mainResultLabel: document.getElementById('mainResultLabel'),
+    secondaryResults: document.getElementById('secondaryResults'),
+    searchInput: document.getElementById('searchInput'),
+    searchDropdown: document.getElementById('searchDropdown'),
+    about: document.getElementById('aboutText')
+};
+
+function init() {
+    // Simple URL Parameter Logic for Phase 1
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    
+    if (slug && CALCULATOR_REGISTRY[slug]) {
+        loadCalculator(slug);
+    } else if (slug && !CALCULATOR_REGISTRY[slug]) {
+        loadPlaceholder(slug);
+    } else {
+        loadCalculator('mortgage-calculator'); 
+    }
+}
+
+function loadCalculator(slug) {
+    const config = CALCULATOR_REGISTRY[slug];
+    state.currentSlug = slug;
+    
+    document.title = `${config.title} — Calcumina`;
+    els.title.textContent = config.title;
+    els.tag.textContent = config.category;
+    els.desc.textContent = config.description;
+    els.formTitle.textContent = `Enter Your ${config.category === 'Health' ? 'Details' : 'Numbers'}`;
+    els.mainResultLabel.textContent = config.mainLabel;
+    els.about.textContent = `This ${config.title} helps you make accurate decisions based on your specific inputs. Enter your data above to see instant results.`;
+
+    els.inputContainer.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'form-grid';
+    state.inputValues = {}; 
+
+    config.inputs.forEach((inp, idx) => {
+        const group = document.createElement('div');
+        group.className = inp.type === 'range' || inp.options ? 'form-group full' : 'form-group';
+        
+        const label = document.createElement('label');
+        label.textContent = inp.label;
+        if(inp.suffix) label.textContent += ` (${inp.suffix})`;
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'input-wrap';
+
+        let inputEl;
+
+        if (inp.type === 'select') {
+            inputEl = document.createElement('select');
+            inp.options.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.val;
+                o.textContent = opt.txt;
+                inputEl.appendChild(o);
+            });
+        } else if (inp.type === 'range') {
+            inputEl = document.createElement('input');
+            inputEl.type = 'range';
+            inputEl.min = inp.min;
+            inputEl.max = inp.max;
+            inputEl.step = inp.step;
+            inputEl.value = inp.value;
+            
+            const valDisplay = document.createElement('span');
+            valDisplay.style.fontSize = '0.8rem';
+            valDisplay.style.fontWeight = 'bold';
+            valDisplay.style.marginLeft = '10px';
+            valDisplay.textContent = inp.value + (inp.suffix || '');
+            label.appendChild(valDisplay);
+            
+            inputEl.addEventListener('input', (e) => {
+                valDisplay.textContent = e.target.value + (inp.suffix || '');
+                state.inputValues[inp.id] = parseFloat(e.target.value);
+                calculate(); 
+            });
+
+        } else {
+            inputEl = document.createElement('input');
+            inputEl.type = inp.type === 'number' ? 'number' : 'text';
+            inputEl.value = inp.value;
+            inputEl.step = "any";
+        }
+
+        inputEl.id = `inp-${inp.id}`;
+        if(inp.prefix) {
+            const prefix = document.createElement('span');
+            prefix.className = 'input-prefix';
+            prefix.textContent = inp.prefix;
+            wrapper.appendChild(prefix);
+            inputEl.style.paddingLeft = "28px";
+        }
+        if(inp.suffix && inp.type !== 'range') {
+            const suffix = document.createElement('span');
+            suffix.className = 'input-suffix';
+            suffix.textContent = inp.suffix;
+            wrapper.appendChild(suffix);
+            inputEl.style.paddingRight = "40px";
+        }
+
+        inputEl.addEventListener('input', (e) => {
+            const val = inp.type === 'number' || inp.type === 'range' ? parseFloat(e.target.value) : e.target.value;
+            state.inputValues[inp.id] = val;
+        });
+
+        wrapper.appendChild(inputEl);
+        group.appendChild(label);
+        group.appendChild(wrapper);
+        grid.appendChild(group);
+        state.inputValues[inp.id] = inp.value;
+    });
+
+    els.inputContainer.appendChild(grid);
+    els.results.classList.remove('visible');
+    els.calcBtn.onclick = calculate;
+}
+
+function calculate() {
+    const config = CALCULATOR_REGISTRY[state.currentSlug];
+    if (!config || !config.logic) return;
+
+    try {
+        const res = config.logic(state.inputValues);
+        
+        els.mainResultVal.textContent = res.main;
+        if(res.mainColor) els.mainResultVal.style.color = res.mainColor;
+        else els.mainResultVal.style.color = 'white';
+
+        if(res.mainSub) {
+            let sub = document.querySelector('.result-primary-sub');
+            if(!sub) {
+                sub = document.createElement('div');
+                sub.className = 'result-primary-sub';
+                document.querySelector('.result-primary').appendChild(sub);
+            }
+            sub.textContent = res.mainSub;
+        } else {
+            const sub = document.querySelector('.result-primary-sub');
+            if(sub) sub.remove();
+        }
+
+        els.secondaryResults.innerHTML = '';
+        if(res.secondary) {
+            res.secondary.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.innerHTML = `<div class="result-item-label">${item.label}</div><div class="result-item-value">${item.value}</div>`;
+                els.secondaryResults.appendChild(div);
+            });
+        }
+
+        els.results.classList.add('visible');
+        if(window.innerWidth < 600) {
+            els.results.scrollIntoView({behavior:'smooth', block:'nearest'});
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("There was an error calculating. Please check your inputs.");
+    }
+}
+
+function loadPlaceholder(slug) {
+    document.title = `${slug.replace(/-/g, ' ')} — Calcumina`;
+    els.title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    els.tag.textContent = "Coming Soon";
+    els.desc.textContent = "We are currently building the logic for this calculator.";
+    els.inputContainer.innerHTML = '<div class="error-msg">This calculator is configured, but logic is not added yet.</div>';
+    els.formTitle.textContent = "Status";
+    els.results.classList.remove('visible');
+    els.calcBtn.style.display = 'none';
+}
+
+els.searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    els.searchDropdown.innerHTML = '';
+    
+    if (query.length < 2) {
+        els.searchDropdown.classList.remove('active');
+        return;
+    }
+
+    const matches = RAW_KEYWORD_LIST.filter(k => k.toLowerCase().includes(query)).slice(0, 5);
+    
+    if (matches.length > 0) {
+        els.searchDropdown.classList.add('active');
+        matches.forEach(match => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            div.textContent = match;
+            const slug = match.toLowerCase().replace(/\s+/g, '-') + "-calculator";
+            div.onclick = () => {
+                window.location.href = `?slug=${slug}`;
+            };
+            els.searchDropdown.appendChild(div);
+        });
+    } else {
+        els.searchDropdown.classList.remove('active');
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if (!els.searchInput.contains(e.target) && !els.searchDropdown.contains(e.target)) {
+        els.searchDropdown.classList.remove('active');
+    }
+});
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
