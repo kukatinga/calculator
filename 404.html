@@ -825,7 +825,7 @@ els.searchInput.addEventListener('input', (e) => {
             div.textContent = match;
             const slug = match.toLowerCase().replace(/\s+/g, '-') + "-calculator";
             div.onclick = () => {
-                window.location.href = `?slug=${slug}`;
+              window.location.href = slug;
             };
             els.searchDropdown.appendChild(div);
         });
