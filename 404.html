@@ -520,16 +520,11 @@ const CALCULATOR_REGISTRY = {
             const P = vals.homePrice - vals.downPayment;
             const r = (vals.interestRate / 100) / 12;
             const n = vals.loanTerm * 12;
-            
-            let monthlyPI = 0;
-            if (r === 0) monthlyPI = P / n;
-            else monthlyPI = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-
+            let monthlyPI = r === 0 ? P / n : P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
             const monthlyTaxIns = (vals.tax + vals.insurance) / 12;
             const totalMonthly = monthlyPI + monthlyTaxIns;
             const totalCost = (monthlyPI * n) + (vals.tax * vals.loanTerm) + (vals.insurance * vals.loanTerm);
             const totalInterest = (monthlyPI * n) - P;
-
             return {
                 main: "$" + totalMonthly.toLocaleString(undefined, {maximumFractionDigits: 0}),
                 secondary: [
@@ -541,7 +536,7 @@ const CALCULATOR_REGISTRY = {
             };
         }
     },
-        "roi-calculator": {
+    "roi-calculator": {
         title: "ROI Calculator",
         category: "Finance",
         description: "Calculate your Return on Investment percentage to see how profitable your investment was.",
@@ -553,7 +548,6 @@ const CALCULATOR_REGISTRY = {
         logic: (vals) => {
             const profit = vals.returned - vals.invested;
             const roi = (profit / vals.invested) * 100;
-            
             return {
                 main: roi.toFixed(2) + "%",
                 secondary: [
@@ -579,12 +573,10 @@ const CALCULATOR_REGISTRY = {
             const bmi = vals.weight / (hM * hM);
             let status = "";
             let color = "var(--ink)";
-            
             if (bmi < 18.5) { status = "Underweight"; color = "var(--accent)"; }
             else if (bmi < 25) { status = "Healthy Weight"; color = "var(--green)"; }
             else if (bmi < 30) { status = "Overweight"; color = "#e69500"; }
             else { status = "Obese"; color = "var(--red)"; }
-
             return {
                 main: bmi.toFixed(1),
                 mainColor: color,
@@ -598,14 +590,9 @@ const CALCULATOR_REGISTRY = {
     }
 };
 
-const RAW_KEYWORD_LIST = [
-    "mortgage calculator", "bmi calculator", "loan calculator", "age calculator", "roi calculator"
-];
+const RAW_KEYWORD_LIST = ["mortgage calculator", "bmi calculator", "roi calculator"];
 
-const state = {
-    currentSlug: 'mortgage-calculator',
-    inputValues: {}
-};
+const state = { currentSlug: 'mortgage-calculator', inputValues: {} };
 
 const els = {
     title: document.getElementById('pageTitle'),
@@ -623,27 +610,17 @@ const els = {
     about: document.getElementById('aboutText')
 };
 
-// 1. Initialize Router (Clean URL Version)
 function init() {
-    // Get the path (e.g., "/bmi-calculator")
     const path = window.location.pathname;
+    // Extract slug and handle root path
+    let slug = (path === '/' || path === '/index.html') ? 'mortgage-calculator' : path.replace(/^\/|\/$/g, '');
     
-    let slug = '';
-
-    // If the path is just "/", load the default calculator
-    if (path === '/' || path === '/index.html') {
-        slug = 'mortgage-calculator'; 
-    } else {
-        // Remove the first slash "/" and the last slash "/" if it exists
-        slug = path.replace(/^\/|\/$/g, '');
+    // Clean up slug if user typed it with .html or just the name
+    slug = slug.replace('.html', '');
+    if (slug && !slug.endsWith('-calculator') && !CALCULATOR_REGISTRY[slug]) {
+        if (CALCULATOR_REGISTRY[slug + '-calculator']) slug += '-calculator';
     }
 
-    // Optional: Add "-calculator" if the user just typed "bmi"
-    if (!slug.endsWith('-calculator')) {
-        slug = slug + '-calculator';
-    }
-
-    // Load the calculator
     if (CALCULATOR_REGISTRY[slug]) {
         loadCalculator(slug);
     } else {
@@ -654,89 +631,49 @@ function init() {
 function loadCalculator(slug) {
     const config = CALCULATOR_REGISTRY[slug];
     state.currentSlug = slug;
-    
     document.title = `${config.title} — Calcumina`;
     els.title.textContent = config.title;
     els.tag.textContent = config.category;
     els.desc.textContent = config.description;
-    els.formTitle.textContent = `Enter Your ${config.category === 'Health' ? 'Details' : 'Numbers'}`;
     els.mainResultLabel.textContent = config.mainLabel;
-    els.about.textContent = `This ${config.title} helps you make accurate decisions based on your specific inputs. Enter your data above to see instant results.`;
-
     els.inputContainer.innerHTML = '';
+    
     const grid = document.createElement('div');
     grid.className = 'form-grid';
-    state.inputValues = {}; 
-
-    config.inputs.forEach((inp, idx) => {
+    
+    config.inputs.forEach(inp => {
         const group = document.createElement('div');
-        group.className = inp.type === 'range' || inp.options ? 'form-group full' : 'form-group';
-        
+        group.className = (inp.type === 'range' || inp.options) ? 'form-group full' : 'form-group';
         const label = document.createElement('label');
-        label.textContent = inp.label;
-        if(inp.suffix) label.textContent += ` (${inp.suffix})`;
+        label.textContent = inp.label + (inp.suffix && inp.type !== 'range' ? ` (${inp.suffix})` : '');
         
         const wrapper = document.createElement('div');
         wrapper.className = 'input-wrap';
-
-        let inputEl;
-
+        let inputEl = document.createElement(inp.type === 'select' ? 'select' : 'input');
+        
         if (inp.type === 'select') {
-            inputEl = document.createElement('select');
             inp.options.forEach(opt => {
                 const o = document.createElement('option');
-                o.value = opt.val;
-                o.textContent = opt.txt;
+                o.value = opt.val; o.textContent = opt.txt;
                 inputEl.appendChild(o);
             });
-        } else if (inp.type === 'range') {
-            inputEl = document.createElement('input');
-            inputEl.type = 'range';
-            inputEl.min = inp.min;
-            inputEl.max = inp.max;
-            inputEl.step = inp.step;
-            inputEl.value = inp.value;
-            
-            const valDisplay = document.createElement('span');
-            valDisplay.style.fontSize = '0.8rem';
-            valDisplay.style.fontWeight = 'bold';
-            valDisplay.style.marginLeft = '10px';
-            valDisplay.textContent = inp.value + (inp.suffix || '');
-            label.appendChild(valDisplay);
-            
-            inputEl.addEventListener('input', (e) => {
-                valDisplay.textContent = e.target.value + (inp.suffix || '');
-                state.inputValues[inp.id] = parseFloat(e.target.value);
-                calculate(); 
-            });
-
         } else {
-            inputEl = document.createElement('input');
-            inputEl.type = inp.type === 'number' ? 'number' : 'text';
-            inputEl.value = inp.value;
-            inputEl.step = "any";
+            inputEl.type = inp.type;
+            if (inp.type === 'range') {
+                inputEl.min = inp.min; inputEl.max = inp.max; inputEl.step = inp.step;
+            }
         }
-
-        inputEl.id = `inp-${inp.id}`;
-        if(inp.prefix) {
-            const prefix = document.createElement('span');
-            prefix.className = 'input-prefix';
-            prefix.textContent = inp.prefix;
-            wrapper.appendChild(prefix);
-            inputEl.style.paddingLeft = "28px";
-        }
-        if(inp.suffix && inp.type !== 'range') {
-            const suffix = document.createElement('span');
-            suffix.className = 'input-suffix';
-            suffix.textContent = inp.suffix;
-            wrapper.appendChild(suffix);
-            inputEl.style.paddingRight = "40px";
-        }
-
+        
+        inputEl.value = inp.value || '';
         inputEl.addEventListener('input', (e) => {
-            const val = inp.type === 'number' || inp.type === 'range' ? parseFloat(e.target.value) : e.target.value;
-            state.inputValues[inp.id] = val;
+            state.inputValues[inp.id] = inp.type === 'number' || inp.type === 'range' ? parseFloat(e.target.value) : e.target.value;
+            if (inp.type === 'range') calculate();
         });
+
+        if (inp.prefix) {
+            const p = document.createElement('span'); p.className = 'input-prefix'; p.textContent = inp.prefix;
+            wrapper.appendChild(p);
+        }
 
         wrapper.appendChild(inputEl);
         group.appendChild(label);
@@ -746,97 +683,46 @@ function loadCalculator(slug) {
     });
 
     els.inputContainer.appendChild(grid);
-    els.results.classList.remove('visible');
+    els.calcBtn.style.display = 'block';
     els.calcBtn.onclick = calculate;
 }
 
 function calculate() {
     const config = CALCULATOR_REGISTRY[state.currentSlug];
-    if (!config || !config.logic) return;
-
-    try {
-        const res = config.logic(state.inputValues);
-        
-        els.mainResultVal.textContent = res.main;
-        if(res.mainColor) els.mainResultVal.style.color = res.mainColor;
-        else els.mainResultVal.style.color = 'white';
-
-        if(res.mainSub) {
-            let sub = document.querySelector('.result-primary-sub');
-            if(!sub) {
-                sub = document.createElement('div');
-                sub.className = 'result-primary-sub';
-                document.querySelector('.result-primary').appendChild(sub);
-            }
-            sub.textContent = res.mainSub;
-        } else {
-            const sub = document.querySelector('.result-primary-sub');
-            if(sub) sub.remove();
-        }
-
-        els.secondaryResults.innerHTML = '';
-        if(res.secondary) {
-            res.secondary.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.innerHTML = `<div class="result-item-label">${item.label}</div><div class="result-item-value">${item.value}</div>`;
-                els.secondaryResults.appendChild(div);
-            });
-        }
-
-        els.results.classList.add('visible');
-        if(window.innerWidth < 600) {
-            els.results.scrollIntoView({behavior:'smooth', block:'nearest'});
-        }
-
-    } catch (e) {
-        console.error(e);
-        alert("There was an error calculating. Please check your inputs.");
-    }
+    const res = config.logic(state.inputValues);
+    els.mainResultVal.textContent = res.main;
+    els.mainResultVal.style.color = res.mainColor || 'white';
+    els.secondaryResults.innerHTML = '';
+    res.secondary.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'result-item';
+        div.innerHTML = `<div class="result-item-label">${item.label}</div><div class="result-item-value">${item.value}</div>`;
+        els.secondaryResults.appendChild(div);
+    });
+    els.results.classList.add('visible');
 }
 
 function loadPlaceholder(slug) {
-    document.title = `${slug.replace(/-/g, ' ')} — Calcumina`;
-    els.title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    els.title.textContent = slug.replace(/-/g, ' ').toUpperCase();
     els.tag.textContent = "Coming Soon";
-    els.desc.textContent = "We are currently building the logic for this calculator.";
-    els.inputContainer.innerHTML = '<div class="error-msg">This calculator is configured, but logic is not added yet.</div>';
-    els.formTitle.textContent = "Status";
-    els.results.classList.remove('visible');
+    els.inputContainer.innerHTML = '<div class="error-msg">Logic not added yet.</div>';
     els.calcBtn.style.display = 'none';
 }
 
 els.searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     els.searchDropdown.innerHTML = '';
-    
-    if (query.length < 2) {
-        els.searchDropdown.classList.remove('active');
-        return;
-    }
-
-    const matches = RAW_KEYWORD_LIST.filter(k => k.toLowerCase().includes(query)).slice(0, 5);
-    
+    if (query.length < 2) return els.searchDropdown.classList.remove('active');
+    const matches = RAW_KEYWORD_LIST.filter(k => k.includes(query)).slice(0, 5);
     if (matches.length > 0) {
         els.searchDropdown.classList.add('active');
         matches.forEach(match => {
             const div = document.createElement('div');
             div.className = 'search-item';
             div.textContent = match;
-            const slug = match.toLowerCase().replace(/\s+/g, '-') + "-calculator";
-            div.onclick = () => {
-              window.location.href = slug;
-            };
+            div.onclick = () => window.location.href = '/' + match.replace(/\s+/g, '-');
             els.searchDropdown.appendChild(div);
         });
-    } else {
-        els.searchDropdown.classList.remove('active');
-    }
-});
-
-document.addEventListener('click', (e) => {
-    if (!els.searchInput.contains(e.target) && !els.searchDropdown.contains(e.target)) {
-        els.searchDropdown.classList.remove('active');
     }
 });
 
